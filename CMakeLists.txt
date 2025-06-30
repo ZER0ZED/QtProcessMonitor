@@ -59,7 +59,7 @@ set_target_properties(qtprocessmonitor PROPERTIES
 # Copy config file to build directory
 configure_file(
     "${CMAKE_SOURCE_DIR}/config.xml"
-    "${CMAKE_BINARY_DIR}/bin/config.xml"
+    "${CMAKE_BINARY_DIR}bin/config.xml"
     COPYONLY
 )
 

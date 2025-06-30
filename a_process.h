@@ -73,6 +73,13 @@ public:
      */
     bool IsApplicationRunning(const QString& _appName);
 
+    /**
+     * @brief Manually refresh the status of a specific application
+     * @param _appName Application name - must match configuration
+     * @return bool True if application exists in configuration
+     */
+    bool RefreshApplicationStatus(const QString& _appName);
+
 signals:
     /**
      * @brief Emitted when an application status changes

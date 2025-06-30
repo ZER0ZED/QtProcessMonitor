@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include <QApplication>
+#include <QCoreApplication>
 #include <QThread>
 
 // AppControlButton Implementation
@@ -100,8 +101,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(ProcessManager, &A_process::ApplicationRestarted,
             this, &MainWindow::OnApplicationRestarted);
 
-    // Load default configuration
-    LoadConfiguration("config.xml");
+    // Always load directly from the main project config.xml file
+    QString _configPath = "/home/zerozed/projects/QtProcessMonitor/config.xml";
+    
+    qDebug() << "Loading configuration from:" << _configPath;
+    LoadConfiguration(_configPath);
 
     // Start process monitoring
     ProcessManager->StartMonitoring();
@@ -191,16 +195,7 @@ void MainWindow::SetupControlButtons()
     SaveButton->setMinimumWidth(150);
     connect(SaveButton, &QPushButton::clicked, this, &MainWindow::OnSaveClicked);
 
-    RefreshButton = new QPushButton("Refresh");
-    RefreshButton->setMinimumHeight(40);
-    RefreshButton->setMinimumWidth(100);
-    connect(RefreshButton, &QPushButton::clicked, [this]() {
-        LoadConfiguration("config.xml");
-        ShowStatusMessage("Configuration refreshed");
-    });
-
     _buttonLayout->addWidget(SaveButton);
-    _buttonLayout->addWidget(RefreshButton);
     _buttonLayout->addStretch();
 
     MainLayout->addLayout(_buttonLayout);
@@ -270,15 +265,17 @@ void MainWindow::ApplyStyles()
 {
     setStyleSheet(
         "QMainWindow {"
-        "   background-color: #f0f0f0;"
+        "   background-color: #1E293B;"
         "}"
         "QGroupBox {"
         "   font-weight: bold;"
         "   font-size: 14px;"
-        "   border: 2px solid #cccccc;"
+        "   border: 2px solid #334155;"
         "   border-radius: 8px;"
         "   margin-top: 10px;"
         "   padding-top: 10px;"
+        "   color: #E2E8F0;"
+        "   background-color: #293548;"
         "}"
         "QGroupBox::title {"
         "   subcontrol-origin: margin;"
@@ -286,21 +283,23 @@ void MainWindow::ApplyStyles()
         "   padding: 0 5px 0 5px;"
         "}"
         "QLineEdit {"
-        "   border: 2px solid #ddd;"
+        "   border: 2px solid #475569;"
         "   border-radius: 5px;"
         "   padding: 8px;"
         "   font-size: 12px;"
-        "   background-color: white;"
+        "   background-color: #334155;"
+        "   color: #F1F5F9;"
         "}"
         "QLineEdit:focus {"
-        "   border-color: #4CAF50;"
+        "   border-color: #60A5FA;"
         "}"
         "QLabel {"
         "   font-size: 12px;"
         "   font-weight: bold;"
+        "   color: #E2E8F0;"
         "}"
         "QPushButton {"
-        "   background-color: #2196F3;"
+        "   background-color: #3B82F6;"
         "   color: white;"
         "   border: none;"
         "   border-radius: 5px;"
@@ -308,25 +307,36 @@ void MainWindow::ApplyStyles()
         "   font-weight: bold;"
         "}"
         "QPushButton:hover {"
-        "   background-color: #1976D2;"
+        "   background-color: #2563EB;"
         "}"
         "QPushButton:pressed {"
-        "   background-color: #0D47A1;"
+        "   background-color: #1D4ED8;"
         "}"
         "QScrollArea {"
-        "   border: 1px solid #ddd;"
+        "   border: 1px solid #475569;"
         "   border-radius: 5px;"
-        "   background-color: white;"
+        "   background-color: #334155;"
+        "}"
+        "QWidget#ScrollWidget {"
+        "   background-color: #334155;"
+        "}"
+        "QStatusBar {"
+        "   background-color: #293548;"
+        "   color: #E2E8F0;"
         "}"
         );
 }
 
 void MainWindow::OnSaveClicked()
 {
+    qDebug() << "Save button clicked - starting save process";
+
     // Update settings from input fields
     QString _id = IdLineEdit->text().trimmed();
     QString _port = PortLineEdit->text().trimmed();
     QString _ip = IpLineEdit->text().trimmed();
+
+    qDebug() << "Current values - ID:" << _id << "Port:" << _port << "IP:" << _ip;
 
     // Basic validation
     if (_id.isEmpty() || _port.isEmpty() || _ip.isEmpty()) {
@@ -341,32 +351,65 @@ void MainWindow::OnSaveClicked()
         return;
     }
 
-    // Update settings
+    // Update settings in memory
+    qDebug() << "Updating settings in memory";
     Settings->UpdateSettings(_id, _port, _ip);
 
+    // Verify settings were updated
+    qDebug() << "Verifying settings update - ID:" << Settings->GetId()
+             << "Port:" << Settings->GetPort() << "IP:" << Settings->GetIp();
+
     // Save to file
+    qDebug() << "Attempting to save configuration to file";
     if (Settings->SaveConfiguration()) {
         ShowStatusMessage("Configuration saved successfully");
+        qDebug() << "Configuration save completed successfully";
+
+        // Force refresh display to show saved values
+        UpdateSettingsDisplay();
     } else {
         ShowStatusMessage("Failed to save configuration", true);
+        qDebug() << "Configuration save failed";
     }
 }
 
 void MainWindow::OnStartApplication(const QString& _appName)
 {
+    qDebug() << "Attempting to start application:" << _appName;
+
     if (ProcessManager->StartApplication(_appName)) {
         ShowStatusMessage("Starting application: " + _appName);
+        qDebug() << "Application start request successful for:" << _appName;
+
+        // Save the status change to XML file
+        if (Settings->SaveConfiguration()) {
+            qDebug() << "Status change saved to XML for:" << _appName;
+        } else {
+            qDebug() << "Warning: Failed to save status change to XML for:" << _appName;
+        }
     } else {
         ShowStatusMessage("Failed to start application: " + _appName, true);
+        qDebug() << "Application start request failed for:" << _appName;
     }
 }
 
 void MainWindow::OnStopApplication(const QString& _appName)
 {
+    qDebug() << "Attempting to stop application:" << _appName;
+
     if (ProcessManager->StopApplication(_appName)) {
         ShowStatusMessage("Stopping application: " + _appName);
+        qDebug() << "Application stop request successful for:" << _appName;
+
+        // Save the status change to XML file
+        if (Settings->SaveConfiguration()) {
+            qDebug() << "Status change saved to XML for:" << _appName;
+        } else {
+            qDebug() << "Warning: Failed to save status change to XML for:" << _appName;
+        }
     } else {
         ShowStatusMessage("Failed to stop application: " + _appName, true);
+        qDebug() << "Application stop request failed for:" << _appName;
     }
 }
 

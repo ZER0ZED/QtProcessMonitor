@@ -27,8 +27,7 @@ bool A_settingsclass::LoadConfiguration(const QString& _filePath)
     QString _errorMsg;
     int _errorLine, _errorColumn;
 
-    QByteArray xmlData = _xmlFile.readAll();
-    if (!XmlDocument.setContent(xmlData, &_errorMsg, &_errorLine, &_errorColumn)) {
+    if (!XmlDocument.setContent(&_xmlFile, &_errorMsg, &_errorLine, &_errorColumn)) {
         qDebug() << "Error parsing XML:" << _errorMsg
                  << "at line" << _errorLine << "column" << _errorColumn;
         _xmlFile.close();
@@ -68,19 +67,87 @@ bool A_settingsclass::SaveConfiguration()
 
     // Build the XML document with current data
     BuildXmlDocument();
+    
+    // Save to the current working file first
+    bool _savedToCurrent = SaveToFile(XmlFilePath);
+    
+    // Determine if we need to save to additional locations
+    QString _currentPath = QFileInfo(XmlFilePath).absoluteFilePath();
+    qDebug() << "Current XML file path:" << _currentPath;
+    
+    // Try to identify both the source and build locations
+    QString _sourcePath;
+    QString _buildPath;
+    
+    // Case 1: We're loading from the main project directory (our fix working)
+    if (_currentPath.contains("/QtProcessMonitor/config.xml") && !_currentPath.contains("/build/")) {
+        _sourcePath = _currentPath;  // Already the source
+        _buildPath = QFileInfo(_currentPath).absolutePath() + "/build/bin/config.xml";
+        qDebug() << "Detected source config, will also save to build:" << _buildPath;
+    }
+    // Case 2: We're loading from build directory
+    else if (_currentPath.contains("/build/bin/config.xml")) {
+        _buildPath = _currentPath;  // Already the build copy
+        _sourcePath = QFileInfo(_currentPath).absolutePath() + "/../../config.xml";
+        qDebug() << "Detected build config, will also save to source:" << _sourcePath;
+    }
+    // Case 3: Fallback - try both possibilities
+    else {
+        _sourcePath = QDir::currentPath() + "/config.xml";
+        _buildPath = QDir::currentPath() + "/build/bin/config.xml";
+        qDebug() << "Fallback mode - trying both paths";
+    }
+    
+    // Save to the other location if it exists or is writable
+    bool _savedToOther = false;
+    QString _otherPath = (_currentPath == _sourcePath) ? _buildPath : _sourcePath;
+    
+    if (!_otherPath.isEmpty() && _otherPath != _currentPath) {
+        QFileInfo _otherInfo(_otherPath);
+        QFileInfo _otherDir(QFileInfo(_otherPath).absolutePath());
+        
+        if (_otherInfo.exists() || _otherDir.isWritable()) {
+            _savedToOther = SaveToFile(_otherPath);
+            if (_savedToOther) {
+                qDebug() << "Configuration also saved to:" << _otherPath;
+            } else {
+                qDebug() << "Failed to save to:" << _otherPath;
+            }
+        } else {
+            qDebug() << "Cannot save to (not writable or doesn't exist):" << _otherPath;
+        }
+    }
+    
+    // Return true if at least the main save succeeded
+    return _savedToCurrent;
+}
 
-    QFile _xmlFile(XmlFilePath);
-    if (!_xmlFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qDebug() << "Error: Cannot open XML file for writing:" << XmlFilePath;
+// Helper method to save XML to a specific file
+bool A_settingsclass::SaveToFile(const QString& _filePath)
+{
+    QFile _xmlFile(_filePath);
+    if (!_xmlFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        qDebug() << "Error: Cannot open XML file for writing:" << _filePath;
+        qDebug() << "File error:" << _xmlFile.errorString();
         return false;
     }
 
     QTextStream _stream(&_xmlFile);
+    _stream.setEncoding(QStringConverter::Utf8);
     _stream << XmlDocument.toString(4); // 4 spaces indentation
+    _stream.flush();
     _xmlFile.close();
 
-    qDebug() << "Configuration saved successfully to:" << XmlFilePath;
-    return true;
+    // Verify the file was written
+    QFileInfo _fileInfo(_filePath);
+    if (_fileInfo.exists() && _fileInfo.size() > 0) {
+        qDebug() << "Configuration saved successfully to:" << _filePath;
+        qDebug() << "File size:" << _fileInfo.size() << "bytes";
+        return true;
+    } else {
+        qDebug() << "Error: Failed to write configuration file";
+        return false;
+    }
 }
 
 void A_settingsclass::UpdateSettings(const QString& _id, const QString& _port, const QString& _ip)

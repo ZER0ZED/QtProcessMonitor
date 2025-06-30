@@ -8,6 +8,9 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDebug>
+#include <QStringConverter>
+#include <QFileInfo>
+#include <QDir>
 
 /**
  * @brief Structure to hold application information
@@ -95,6 +98,13 @@ private:
      * @brief Creates XML structure for saving
      */
     void BuildXmlDocument();
+    
+    /**
+     * @brief Helper method to save XML to a specific file
+     * @param _filePath Path to save the XML file
+     * @return bool True if successful, false on error
+     */
+    bool SaveToFile(const QString& _filePath);
 };
 
 #endif // A_SETTINGSCLASS_H

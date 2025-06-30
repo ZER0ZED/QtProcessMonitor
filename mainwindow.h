@@ -154,7 +154,7 @@ private:
 
     // Control buttons
     QPushButton* SaveButton;        // Save button - persists changes to XML file
-    QPushButton* RefreshButton;     // Refresh button - reloads configuration from file
+
 
     // Button tracking
     QMap<QString, AppControlButton*> AppButtons; // Map of app buttons - key: app name, value: button widget
