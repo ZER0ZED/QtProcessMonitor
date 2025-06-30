@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <settings>
+        <id>SERVER_001</id>
+        <port>8080</port>
+        <ip>192.168.1.100</ip>
+    </settings>
+    <applications>
+        <app>
+            <n>DatabaseServer</n>
+            <executable>/usr/bin/mysqld</executable>
+            <status>stop</status>
+        </app>
+        <app>
+            <n>WebServer</n>
+            <executable>/usr/sbin/apache2</executable>
+            <status>start</status>
+        </app>
+    </applications>
+</configuration>
