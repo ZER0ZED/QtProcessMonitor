@@ -1,14 +1,19 @@
 <configuration>
     <settings>
-        <id>SERVER_00100</id>
-        <port>9999</port>
+        <id>SERVER_001</id>
+        <port>1000</port>
         <ip>192.168.1.32</ip>
     </settings>
     <applications>
         <app>
             <n>Calculator</n>
             <executable>/usr/bin/gnome-calculator</executable>
-            <status>start</status>
+            <status>stop</status>
+        </app>
+        <app>
+            <n>Firefox</n>
+            <executable>/usr/bin/firefox</executable>
+            <status>stop</status>
         </app>
     </applications>
 </configuration>
